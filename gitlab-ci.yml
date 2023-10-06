@@ -1,0 +1,49 @@
+stages:
+  - build
+  - test
+  - deploy
+docker_build:
+  stage: build
+  script:
+  - echo "CONTAINER_NAME=${CONTAINER_NAME}"
+  - git clone https://github.com/bhavenger/skillbox-diploma.git
+  - cd skillbox-diploma
+  - docker build -t $DOCKERHUB_USERNAME/diploma:${CI_COMMIT_SHORT_SHA} .
+  - echo "$DOCKERHUB_USERNAME/diploma:${CI_COMMIT_SHORT_SHA}" > $CI_PROJECT_DIR/container_name.txt
+  - docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+  - docker push $DOCKERHUB_USERNAME/diploma:${CI_COMMIT_SHORT_SHA}
+  - docker rmi $DOCKERHUB_USERNAME/diploma:${CI_COMMIT_SHORT_SHA}
+  services:
+  - docker:dind
+  artifacts:
+    paths:
+     - skillbox-diploma/
+     - container_name.txt
+
+docker-test:
+   stage: test
+   script:
+     - cd skillbox-diploma 
+     - ./run-tests.sh     
+   artifacts:
+     paths:
+     - skillbox-diploma/
+
+### deploy playbook with manual run
+deploytest:
+  stage: deploy
+  tags: 
+  - stage
+  script:
+    - ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook /tmp/deploy-playbook.yaml -b -vvv --extra-vars "NAME=$DOCKERHUB_USERNAME/diploma:${CI_COMMIT_SHORT_SHA}"
+  only: [uat]
+  when: manual
+
+deployprod:
+  stage: deploy
+  tags: 
+  - prod
+  script:
+    - ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook /tmp/deploy-playbook.yaml -b -vvv --extra-vars "NAME=$DOCKERHUB_USERNAME/diploma:${CI_COMMIT_SHORT_SHA}"
+  only: [master]
+  when: manual
