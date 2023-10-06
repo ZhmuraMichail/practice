@@ -1,0 +1,38 @@
+---
+- hosts: all
+  become: true
+  vars: 
+   server_name: "{{ record_name }}"
+   service_ip: localhost
+   service_port: 9090
+  roles:
+    - nginx
+  tasks:
+  - name: update
+    shell: >
+       apt-get update
+  - name: Install Prometheus
+    apt:
+      name:
+        - prometheus
+        - prometheus-node-exporter
+        - prometheus-pushgateway
+      state: present
+  - name: Start Prometheus services
+    service:
+      name: "{{ item }}"
+      state: started
+      enabled: yes
+    with_items:
+      - prometheus
+      - prometheus-node-exporter
+      - prometheus-pushgateway
+  - name: Configure Prometheus
+    template:
+      src: ../templates/prometheus.yml.j2
+      dest: /etc/prometheus/prometheus.yml
+  - name: Restart Prometheus service
+    systemd:
+      name: prometheus.service
+      state: restarted   
+ 

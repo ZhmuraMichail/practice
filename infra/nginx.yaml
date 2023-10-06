@@ -1,0 +1,25 @@
+---
+- hosts: all
+  vars_files: 
+  - ./tf_ansible_vars_file.yml
+  vars:
+    service_ip: "{{tf_host_ip_address}}"
+    service_port: 8080
+  pre_tasks:
+  - name: "Ensure Nginx default server symlink is absent"
+    file:
+      path: "/etc/nginx/sites-enabled/default"
+      state: absent
+  tasks:
+    - name: "Add managed vhost config file"
+      template: 
+        src: ./templates/nginx.conf.j2
+        dest: /etc/nginx/sites-enabled/nginx.conf
+        force: true
+        owner: root
+        mode: 0644
+      notify: reload nginx
+  handlers:
+    - name: reload nginx
+      service: name=nginx state=reloaded
+

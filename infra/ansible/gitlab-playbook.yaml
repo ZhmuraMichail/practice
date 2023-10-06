@@ -1,0 +1,89 @@
+---
+- hosts: all
+  become: true
+  vars_files:
+  - ../templates/runner_vars
+  vars:
+      gitlab_ci_url: "{{gitlab_ci_url}}"
+      runner_registration_token: "{{runner_registration_token}}"
+      runner_executor: "shell"
+      runner_name: "run"
+      go_version: 1.17.5
+      go_os: linux
+      go_arch: amd64
+      go_install_dir: /usr/local
+  roles:
+    - docker
+  tasks:
+  - name: Add playbook file
+    copy:
+      src: ./deploy-playbook.yaml
+      dest: /tmp/deploy-playbook.yaml
+      owner: ubuntu
+      mode: 0644
+  - name: Add unit file
+    copy:
+      src: ../../service/docker.Skillbox-app.service.j2
+      dest: /tmp/docker.Skillbox-app.service.j2
+      owner: ubuntu
+      mode: 0644
+  - name: Install required system packages
+    apt:
+     pkg:
+      - prometheus-node-exporter
+      - prometheus-pushgateway
+      
+  - name: Add GitLab Runner GPG key
+    apt_key:
+      url: https://packages.gitlab.com/gpg.key
+      state: present
+  - name: Add GitLab Runner repository
+    apt_repository:
+      repo: deb https://packages.gitlab.com/runner/gitlab-runner/ubuntu/ {{ ansible_distribution_release }} main
+      state: present
+  - name: Install GitLab Runner
+    apt:
+      name: gitlab-runner
+      state: present
+  - name: Register GitLab Runner
+    shell: |
+        gitlab-runner register \
+        --non-interactive \
+        --url "{{ gitlab_ci_url }}" \
+        --registration-token "{{ runner_registration_token }}" \
+        --executor "{{ runner_executor }}" \
+        --name "{{ runner_name }}" \
+        --tag-list "{{ runner_tags }}" \
+        --run-untagged \
+        --locked="false" \
+        --access-level="not_protected" \
+      
+  - name: Start GitLab Runner service
+    service:
+      name: gitlab-runner
+      state: started
+      enabled: yes
+  - name: Add gitlab runner into docker group
+    command: > 
+         usermod -a -G docker gitlab-runner
+  - name: add gitlab-runner into sudoers
+    lineinfile:
+       path: /etc/sudoers
+       line: "gitlab-runner ALL=(ALL:ALL) NOPASSWD:ALL"  
+       validate: "visudo -cf %s"
+  - name: install docker sdk
+    ansible.builtin.pip:
+     name:
+      - docker
+      - six
+      - requests
+      - ansible
+    vars:
+     ansible_python_interpreter: /usr/bin/python3
+  
+  - name: Install SumoLogic collector
+    become: true
+    shell: "curl -s https://raw.githubusercontent.com/SumoLogic/sumologic-otel-collector/main/scripts/install.sh | SUMOLOGIC_INSTALLATION_TOKEN=U1VNT3FxM2luT1lYVjE4QjBsbHNrVW5lVGhyYkRhbEZodHRwczovL2NvbGxlY3RvcnMuZGUuc3Vtb2xvZ2ljLmNvbQ== bash -s -- --install-hostmetrics --tag 'host.group=default' --tag 'deployment.environment=default'"
+
+  
+           

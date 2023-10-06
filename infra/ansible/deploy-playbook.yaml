@@ -1,0 +1,47 @@
+---
+- hosts: localhost
+  vars:
+    dockerhub_username: "{{ lookup('env', 'DOCKERHUB_USERNAME') }}"
+    dockerhub_password: "{{ lookup('env', 'DOCKERHUB_PASSWORD') }}"
+    project_path: /var/www
+  tasks:
+  - name: Add unit file
+    become: true
+    template:
+      src: ./docker.Skillbox-app.service.j2
+      dest: /etc/systemd/system/docker.Skillbox-app.service
+      force: true
+      owner: ubuntu
+      mode: 0644
+    vars: 
+      NAME: "{{ NAME }}" 
+  - name: "Set release Path"
+    set_fact:
+     release_path: "{{ project_path }}/releases/{{ lookup('pipe','date +%Y%m%d%H%M%S') }}" 
+  - name: Log in to Docker Hub
+    docker_login:
+      username: "{{ dockerhub_username }}"
+      password: "{{ dockerhub_password }}"
+
+  - name: Pull image from Docker Hub
+    docker_image:
+      name: "{{ NAME }}"
+      source: pull
+                            
+  - name: Enable serv
+    systemd:
+      name: docker.Skillbox-app
+      enabled: yes    
+  - name: Start service
+    systemd:
+      name: docker.Skillbox-app
+      state: started
+  
+           
+           
+           
+           
+           
+           
+           
+           

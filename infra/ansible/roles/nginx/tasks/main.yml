@@ -1,0 +1,25 @@
+---
+- name: update
+  shell: >
+     apt-get update
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+- name: Ensure Nginx default server symlink is absent
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Add managed vhost config file
+  template:
+    src: ../templates/nginx.conf.j2
+    dest: /etc/nginx/sites-enabled/nginx.conf
+    force: true
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload nginx
+
+

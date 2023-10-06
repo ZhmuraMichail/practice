@@ -1,0 +1,17 @@
+[Unit]
+Description=Skillbox-app
+After=docker.service
+Requires=docker.service
+
+[Service]
+
+TimeoutStartSec=0
+Restart=always
+RestartSec=15
+ExecStartPre=-/usr/bin/docker stop skillbox:ex1
+ExecStartPre=-/usr/bin/docker rm skillbox:ex1
+ExecStart=/usr/bin/docker run -p 8080:8080 skillbox:ex1 
+
+
+[Install]
+WantedBy=multi-user.target

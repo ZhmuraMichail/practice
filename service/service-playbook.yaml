@@ -1,0 +1,47 @@
+---
+- hosts: all
+  vars:
+    project_path: /var/www
+    repository: https://github.com/bhavenger/skillbox-diploma.git
+  tasks:
+  
+  - name: Add unit file
+    template:
+      src: ./docker.Skillbox-app.service
+      dest: /etc/systemd/system
+      force: true
+      owner: ubuntu
+      mode: 0644
+     
+  - name: "Set release Path"
+    set_fact:
+     release_path: "{{ project_path }}/releases/{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
+                             
+  - name: "Clone the repository"
+    git:
+      repo: "{{ repository }}"
+      dest: "{{ release_path }}"
+  
+  - name: build container image
+    docker_image:
+     build:
+       path: "{{ release_path }}"
+     name: skillbox
+     tag: ex1
+     source: build
+     state: present
+   
+     
+  - name: Start service
+    systemd:
+      name: docker.Skillbox-app
+      state: started
+  
+           
+           
+           
+           
+           
+           
+           
+           

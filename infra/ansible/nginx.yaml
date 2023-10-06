@@ -1,0 +1,10 @@
+---
+- hosts: all
+  vars:
+    server_name: _
+    service_ip: "{{tf_host_ip_address}}"
+    service_port: 8080
+  roles:
+    - nginx
+ 
+

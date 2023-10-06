@@ -1,0 +1,37 @@
+---
+- hosts: all
+  become: true
+  vars: 
+   server_name: "{{ record_name }}"
+   service_ip: localhost
+   service_port: 3000
+  roles:
+    - nginx
+  tasks:
+  - name: Copy deb package to remote machine
+    copy:
+      src: ../terraform/grafana-enterprise_9.4.7_amd64.deb
+      dest: /tmp/grafana-enterprise_9.4.7_amd64.deb
+  - name: Add Grafana APT repository
+    shell: >
+       apt-get install -y adduser libfontconfig1 && \
+       dpkg -i /tmp/grafana-enterprise_9.4.7_amd64.deb&& \
+       systemctl daemon-reload && \
+       systemctl start grafana-server && \
+       systemctl enable grafana-server.service 
+  - name: Configure Grafana
+    template:
+      src: ../templates/grafana.ini.j2
+      dest: /etc/grafana/grafana.ini
+    notify:
+    - Restart Grafana
+  - name: Start Grafana service
+    service:
+      name: grafana-server
+      state: started
+      enabled: yes
+  handlers:        
+    - name: Restart Grafana
+      systemd:
+        name: grafana-server
+        state: restarted
